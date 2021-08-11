@@ -95,10 +95,7 @@ class _ManageBannersState extends State<ManageBanners> {
                                         child: CachedNetworkImage(
                                           imageUrl:document['Image'],
                                           fit: BoxFit.cover,
-                                          placeholder: (context, url) => Container(
-                                              height:120.h,
-                                              width:120.w,
-                                              child: CircularProgressIndicator()),
+                                          placeholder: (context, url) => Center(child: Image.asset("images/Ripple2.gif")),
                                         ),
                                       ),
                                     ),
@@ -165,7 +162,7 @@ class _ManageBannersState extends State<ManageBanners> {
                     );
                   }
                   else{
-                    return Container(height: 50,width: 50,);
+                    return Center(child: Image.asset("images/DualBall.gif",height: 100.h,));
                   }
                 }
             ),

@@ -207,7 +207,7 @@ class _SettlementState extends State<Settlement> {
   ProgressDialog pr;
   String upiPhone;
   List<bool> isSelected = [true, false, false];
-  String tType;
+  String tType = 'GPay';
 
   requestTransfer(BuildContext context)async{
     DateTime tdate = DateTime.now();
@@ -215,7 +215,7 @@ class _SettlementState extends State<Settlement> {
     if(widget.sAmount != 0){
       if(upiPhone != null){
         await pr.show();
-        await FirebaseFirestore.instance.collection('Admin').doc('CashRequests').collection('User').doc().set({
+        await FirebaseFirestore.instance.collection('Admin').doc('CashRequests').collection('User').doc(FirebaseAuth.instance.currentUser.phoneNumber).set({
           'PhoneNumber': FirebaseAuth.instance.currentUser.phoneNumber,
           'Name':Home.uProfile['Name'],
           'Email':Home.uProfile['Email'],
@@ -223,6 +223,8 @@ class _SettlementState extends State<Settlement> {
           'TransferType':tType,
           'TransferPhone': upiPhone,
           'Date':sdate,
+          'Status':'Requested',
+          'Remarks':null,
           'RequestTimeStamp':tdate
         });
         await FirebaseFirestore.instance.collection('User').doc(FirebaseAuth.instance.currentUser.phoneNumber).collection('Account').doc('Profile').update({
@@ -263,7 +265,7 @@ class _SettlementState extends State<Settlement> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         child: Container(
-            height: 300.h,
+            height: 355.h,
             margin: EdgeInsets.only(top: 1.h),
             decoration: BoxDecoration(
               shape: BoxShape.rectangle,
@@ -403,6 +405,78 @@ class _SettlementState extends State<Settlement> {
                           borderRadius: BorderRadius.circular(30.0)),
                     ),
                   ),
+                ),
+                Padding(
+                  padding:  EdgeInsets.only(top:20.h),
+                  child: Center(child: Text('Previous Request',style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 16.sp,fontWeight: FontWeight.w800,))),
+                ),
+                Center(
+                  child: FutureBuilder(
+                      future: FirebaseFirestore.instance.collection('Admin').doc('CashRequests').collection('User').doc(FirebaseAuth.instance.currentUser.phoneNumber).get(),
+                      builder: (context, AsyncSnapshot<DocumentSnapshot>mdata) {
+                        if (mdata.hasData) {
+                          if(mdata.data.exists){
+                            return Padding(
+                              padding:  EdgeInsets.symmetric(horizontal: 10.w,vertical: 10.h),
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).cardColor,
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 15.h),
+                                  child: Column(
+                                    children: [
+                                      Container(width:350.w,child: Center(child: Text(mdata.data.id,style: TextStyle(color: Theme.of(context).accentColor,fontSize: 16.sp,fontWeight: FontWeight.w800,),overflow: TextOverflow.ellipsis,))),
+                                      Container(width:350.w,child: Center(child: Text(mdata.data['Name'],style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w600,),overflow: TextOverflow.ellipsis,))),
+                                      Container(width:350.w,child: Center(child: Text(mdata.data['Email'],style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,),overflow: TextOverflow.ellipsis,))),
+                                      Container(width:350.w,child: Center(child: Text('Date: '+ mdata.data['Date'],style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,),overflow: TextOverflow.ellipsis,))),
+                                      Container(width:350.w,child: Center(child: Text('Amount: ₹'+ mdata.data['Amount'].toString(),style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w600,),overflow: TextOverflow.ellipsis,))),
+                                      Container(width:350.w,child: Center(child: Text('Transfer Type: '+ mdata.data['TransferType'],style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,),overflow: TextOverflow.ellipsis,))),
+                                      Container(width:350.w,child: Center(child: Text('Transfer Number: '+ mdata.data['TransferPhone'],style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,),overflow: TextOverflow.ellipsis,))),
+                                      if(mdata.data['Status'] == 'Requested')
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text('Status: ',style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,)),
+                                            Text('Requested',style: TextStyle(color: Theme.of(context).accentColor,fontSize: 16.sp,fontWeight: FontWeight.w800,)),
+                                          ],
+                                        ),
+                                      if(mdata.data['Status'] == 'Completed')
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text('Status: ',style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,)),
+                                            Text('Completed',style: TextStyle(color: Colors.green,fontSize: 16.sp,fontWeight: FontWeight.w800,)),
+                                          ],
+                                        ),
+                                      if(mdata.data['Status'] == 'Declined')
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text('Status: ',style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 14.sp,fontWeight: FontWeight.w400,)),
+                                            Text('Declined',style: TextStyle(color: Colors.red,fontSize: 16.sp,fontWeight: FontWeight.w800,)),
+                                          ],
+                                        ),
+                                      if(mdata.data['Remarks'] != null)
+                                        Container(width:350.w,child: Center(child: Text(mdata.data['Remarks'],style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 12.sp,fontWeight: FontWeight.w400,)))),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          else{
+                            return Text(
+                              'Cash Request not found',
+                              style: TextStyle(color: Theme.of(context).secondaryHeaderColor,fontSize: 16.sp,fontWeight: FontWeight.w600),
+                            );
+                          }
+                        } else {
+                          return CircularProgressIndicator();
+                        }
+                      }),
                 ),
               ],
             )

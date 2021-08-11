@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,15 +18,39 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  String uname,uemail,upin = null;
+  String uname,uemail,upin;
   String im1;
+  String linkHost;
 
   final databaseReference = FirebaseFirestore.instance;
   String groupValue = "Male";
-  File _imageFile = null;
+  File _imageFile;
 
   final picker = ImagePicker();
   ProgressDialog pr;
+
+  Future<void> initDynamicLinks() async {
+    await Future.delayed(Duration(seconds: 1));
+    final PendingDynamicLinkData data = await FirebaseDynamicLinks.instance.getInitialLink();
+    final Uri deepLink = data?.link;
+
+    if (deepLink != null) {
+      linkHost = deepLink.queryParameters['id'];
+    }
+    FirebaseDynamicLinks.instance.onLink(
+        onSuccess: (PendingDynamicLinkData dynamicLink) async {
+          final Uri deepLink = dynamicLink?.link;
+          if (deepLink != null) {
+            linkHost = deepLink.queryParameters['id'];
+          }
+        },
+        onError: (OnLinkErrorException e) async {
+          print('onLinkError');
+          print(e.message);
+        }
+    );
+
+  }
 
   Future pickImage() async {
     final pickedFile = await picker.getImage(source: ImageSource.gallery);
@@ -74,8 +99,15 @@ class _SignUpState extends State<SignUp> {
         'PinCode': upin,
         'Gender': groupValue,
         'ProfileImage': im1,
-        'Wallet' : 0
+        'Wallet' : 0,
+        'FreeRegistration' : 0
       });
+      if(linkHost != null){
+        DocumentSnapshot hostDriver = await databaseReference.collection('Driver').doc(linkHost).collection('Account').doc('Profile').get();
+        await databaseReference.collection('Driver').doc(linkHost).collection('Account').doc('Profile').update({
+          'FreeRegistration':hostDriver.data()['FreeRegistration'] + 1,
+        });
+      }
       Fluttertoast.showToast(
           msg: "Registration Successful...",
           toastLength: Toast.LENGTH_SHORT,

@@ -23,6 +23,7 @@ class _MyVehiclesState extends State<MyVehicles> {
   int vtenure;
   Razorpay _razorpay = Razorpay();
   DateTime nTime;
+  DocumentSnapshot dProfile;
 
   @override
   void initState() {
@@ -33,12 +34,16 @@ class _MyVehiclesState extends State<MyVehicles> {
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
     print(Timestamp.now());
     print(getTime());
+    getdProfile();
   }
   Future<DateTime>getTime()async{
     DateTime mdate = await NTP.now();
     return mdate;
   }
 
+  getdProfile()async{
+   dProfile =  await FirebaseFirestore.instance.collection('Driver').doc(FirebaseAuth.instance.currentUser.phoneNumber).collection('Account').doc('Profile').get();
+  }
   @override
   void dispose() {
     super.dispose();
@@ -46,6 +51,17 @@ class _MyVehiclesState extends State<MyVehicles> {
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response)async {
+    completePayment();
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) async{
+
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    // Do something when an external wallet is selected
+  }
+  completePayment()async{
     DateTime tTime = await getTime();
     DateTime exTime = tTime.add(Duration(days: 30*vtenure));
     print(tTime);
@@ -55,14 +71,7 @@ class _MyVehiclesState extends State<MyVehicles> {
       'STime' : tTime,
       'ExTime' : exTime,
     });
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) async{
-
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    // Do something when an external wallet is selected
+    WidgetInspectorService.instance.forceRebuild();
   }
   @override
   Widget build(BuildContext context) {
@@ -181,28 +190,48 @@ class _MyVehiclesState extends State<MyVehicles> {
                                                           width: 120.w,
                                                           height: 40.h,
                                                           child: MaterialButton(
-                                                            onPressed:(){
-                                                              vid = mdoc.id;
-                                                              vtenure = mdata.data[mdoc['SubCategory']]['Tenure'];
-                                                              var options = {
-                                                                'key': 'rzp_test_nL1xxOCNa7Fdlh',
-                                                                'amount': mdata.data[mdoc['SubCategory']]['Fee'] * 100,
-                                                                'name': 'Saddi Ride',
-                                                                'description': 'Payment for Vehicle Registration',
-                                                                'prefill': {'contact': FirebaseAuth.instance.currentUser.phoneNumber, 'email': Home.uProfile['Email']},
-                                                                'external': {
-                                                                  'wallets': ['paytm']
-                                                                }
-                                                              };
-                                                              try {
-                                                                _razorpay.open(options);
-                                                              } catch (e) {
-                                                                debugPrint(e);
+                                                            onPressed:()async{
+                                                              if(dProfile.data()['FreeRegistration'] > 0){
+                                                                await FirebaseFirestore.instance.collection('Driver').doc(FirebaseAuth.instance.currentUser.phoneNumber).collection('Account').doc('Profile').update({
+                                                                  'FreeRegistration': dProfile.data()['FreeRegistration'] - 1,
+                                                                });
+                                                                vid = mdoc.id;
+                                                                vtenure = mdata.data[mdoc['SubCategory']]['Tenure'];
+                                                                completePayment();
                                                               }
+                                                              else if(mdata.data[mdoc['SubCategory']]['Fee'] == 0){
+                                                                vid = mdoc.id;
+                                                                vtenure = mdata.data[mdoc['SubCategory']]['Tenure'];
+                                                                completePayment();
+                                                              }
+                                                              else{
+                                                                vid = mdoc.id;
+                                                                vtenure = mdata.data[mdoc['SubCategory']]['Tenure'];
+                                                                var options = {
+                                                                  'key': 'rzp_test_nL1xxOCNa7Fdlh',
+                                                                  'amount': mdata.data[mdoc['SubCategory']]['Fee'] * 100,
+                                                                  'name': 'Saddi Ride',
+                                                                  'description': 'Payment for Vehicle Registration',
+                                                                  'prefill': {'contact': FirebaseAuth.instance.currentUser.phoneNumber, 'email': Home.uProfile['Email']},
+                                                                  'external': {
+                                                                    'wallets': ['paytm']
+                                                                  }
+                                                                };
+                                                                try {
+                                                                  _razorpay.open(options);
+                                                                } catch (e) {
+                                                                  debugPrint(e);
+                                                                }
+                                                              }
+
                                                             },
                                                             child: Padding(
                                                               padding: const EdgeInsets.all(5.0),
-                                                              child: Text(
+                                                              child: (dProfile.data()['FreeRegistration'] > 0 || mdata.data[mdoc['SubCategory']]['Fee'] == 0)?Text(
+                                                                'Register',
+                                                                style: TextStyle(fontSize: 14.sp,color: Theme.of(context).primaryColor),
+                                                              ):
+                                                              Text(
                                                                 'Pay: ₹' + mdata.data[mdoc['SubCategory']]['Fee'].toString(),
                                                                 style: TextStyle(fontSize: 14.sp,color: Theme.of(context).primaryColor),
                                                               ),

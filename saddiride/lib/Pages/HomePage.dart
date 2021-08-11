@@ -1,8 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:package_info/package_info.dart';
 import 'package:saddiride/Pages/Booking.dart';
 import 'package:saddiride/Pages/CurrentRide.dart';
 import 'package:saddiride/Pages/Home.dart';
+import 'package:saddiride/Pages/UpdatePage.dart';
 import 'package:saddiride/Pages/UserPage.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,6 +29,19 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    checkVersion();
+  }
+  checkVersion()async{
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    int buildNumber = int.parse(packageInfo.buildNumber);
+    DocumentSnapshot aData = await FirebaseFirestore.instance.collection('Admin').doc('AdminData').get();
+    if(buildNumber >= aData.data()['MinUserBuildNumber']){
+      print(buildNumber);
+    }
+    else{
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) =>
+          UpdateApp()), (Route<dynamic> route) => false);
+    }
   }
   @override
   Widget build(BuildContext context) {

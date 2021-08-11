@@ -1,16 +1,20 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:package_info/package_info.dart';
 import 'package:saddiridedriver/Pages/AccountPage.dart';
 import 'package:saddiridedriver/Pages/BookingHistory.dart';
 import 'package:saddiridedriver/Pages/Bookings.dart';
 import 'package:saddiridedriver/Pages/Home.dart';
 import 'package:saddiridedriver/Pages/Login/LoginPageA.dart';
 import 'package:saddiridedriver/Pages/Payments.dart';
+import 'package:saddiridedriver/Pages/UpdatePage.dart';
 import 'package:saddiridedriver/Pages/Vehicle/Vehicle.dart';
+import 'package:share/share.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key key}) : super(key: key);
@@ -20,6 +24,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+
 
   int _selectedIndex = 0;
   int _selectedIndexA = 0;
@@ -41,6 +46,29 @@ class _HomePageState extends State<HomePage> {
     'Payment Settlement'
   ];
 
+  Future<String> shareProduct(String productID) async {
+    final DynamicLinkParameters parameters = DynamicLinkParameters(
+      uriPrefix: 'https://saddiridedriver.page.link',
+      link: Uri.parse('https://saddiridedriver.page.link/user?id=$productID'),
+      androidParameters: AndroidParameters(
+        packageName: 'com.v4tech.saddiridedriver',
+        fallbackUrl: Uri.parse('www.google.com'),
+      ),
+      iosParameters: IosParameters(
+        bundleId: 'com.v4tech.saddiridedriver',
+        minimumVersion: '1.0.1',
+        appStoreId: '123456789',
+      ),
+    );
+
+    final ShortDynamicLink shortDynamicLink = await parameters.buildShortLink();
+    final Uri shortUrl = shortDynamicLink.shortUrl;
+
+    final Uri dynamicUrl = await parameters.buildUrl();
+    String content = 'Download and install Saddi Ride Driver App and Signup Using my link\n' + shortUrl.toString();
+    Share.share(content,subject: 'Download Saddi Ride Driver');
+  }
+
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   Future<void> logout() async {
     try {
@@ -56,6 +84,24 @@ class _HomePageState extends State<HomePage> {
           LoginPage()), (Route<dynamic> route) => false);
     } catch (e) {
       print(e.toString());
+    }
+  }
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    checkVersion();
+  }
+  checkVersion()async{
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    int buildNumber = int.parse(packageInfo.buildNumber);
+    DocumentSnapshot aData = await FirebaseFirestore.instance.collection('Admin').doc('AdminData').get();
+    if(buildNumber >= aData.data()['MinDriverBuildNumber']){
+      print(buildNumber);
+    }
+    else{
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) =>
+          UpdateApp()), (Route<dynamic> route) => false);
     }
   }
   @override
@@ -251,6 +297,20 @@ class _HomePageState extends State<HomePage> {
                 color: Theme.of(context).accentColor,
                 indent: 15.w,
                 endIndent: 30.w,
+              ),
+              InkWell(
+                onTap: ()
+                {
+                  shareProduct(FirebaseAuth.instance.currentUser.phoneNumber);
+                },
+                child: ListTile(
+                  title: Text('Share App',
+                      style: Theme.of(context).textTheme.bodyText1),
+                  leading: Icon(
+                    Icons.share,
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
               ),
               InkWell(
                 onTap: logout,

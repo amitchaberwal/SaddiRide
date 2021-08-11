@@ -210,7 +210,6 @@ class _PhoneAuthVerifyState extends State<PhoneAuthVerify> {
       verificationId: verificationId,
       smsCode: otpCode,
     ));
-
       var muser = await FirebaseFirestore.instance.collection('Driver').doc(FirebaseAuth.instance.currentUser.phoneNumber).collection('Account').doc('Profile').get();
       if(muser.exists){
         Fluttertoast.showToast(
